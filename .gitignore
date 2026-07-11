@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-ssr/
+
+# 本地环境与凭据（绝不提交）
+.env
+.env.*
+*.local
+*credentials*
+*secret*
+*.pem
+*.key
+
+# 编辑器
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log
+
+# TS 增量构建缓存
+*.tsbuildinfo
