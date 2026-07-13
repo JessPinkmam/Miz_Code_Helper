@@ -28,7 +28,7 @@ describe('promptBuilder 生成 (>=3)', () => {
     expect(dewu.prompt).toContain('平台现行 Background（得物')
     expect(dewu.prompt).not.toContain('taobao-product-collector')
     const vip = buildPrompt(makeInput({ platform: 'vip' }))
-    expect(vip.prompt).toContain('brandStoreSn')
+    expect(vip.prompt).toContain('平台现行 Background（唯品会')
   })
 
   it('3) 正式执行且全部确认 → 生成 formal，不降级', () => {

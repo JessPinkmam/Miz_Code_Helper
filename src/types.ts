@@ -10,7 +10,6 @@ export type TaskType =
   | 'collect_debug' // 采集失败排障
   | 'integrity_audit' // 数据完整性审计
   | 'cron_accept' // Cron 自然运行验收
-  | 'skill_upgrade' // Skill 升级
   | 'result_review' // Agent 返回结果复核
 
 export type DataLevel = 'shop' | 'product'
@@ -54,7 +53,6 @@ export interface TaskInput {
   multishopIsolation: Tri // 多店是否独立 profile/端口
 
   // 留痕
-  gitStatus: string
   taskId: string
   owner: string
   escalateTo: string
@@ -87,7 +85,6 @@ export const EMPTY_TASK_INPUT: TaskInput = {
   hasBackup: 'unknown',
   hasConflictCron: 'unknown',
   multishopIsolation: 'unknown',
-  gitStatus: '',
   taskId: '',
   owner: '',
   escalateTo: '',
@@ -102,7 +99,6 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   collect_debug: '采集失败排障',
   integrity_audit: '数据完整性审计',
   cron_accept: 'Cron 自然运行验收',
-  skill_upgrade: 'Skill 升级',
   result_review: 'Agent 返回结果复核',
 }
 

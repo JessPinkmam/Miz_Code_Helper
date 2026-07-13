@@ -15,7 +15,6 @@ export type RuleScope =
   | 'all'
   | 'write'
   | 'backfill'
-  | 'migration'
   | 'product'
   | 'multishop'
 
@@ -27,8 +26,8 @@ export interface StrictRule {
   message: string
 }
 
-export const STRICT_RULES_VERSION = '1.0.0'
-export const STRICT_RULES_AS_OF = '2026-07-11'
+export const STRICT_RULES_VERSION = '2.0.0'
+export const STRICT_RULES_AS_OF = '2026-07-13'
 
 /** 组装优先级：越靠前越不可覆盖 */
 export const PRIORITY = ['strict', 'platform_current', 'task_input', 'historical'] as const
@@ -39,9 +38,9 @@ const BLOCK_RULES: StrictRule[] = [
   {
     id: 'STRICT-NO-BYPASS-AGENT',
     level: 'BLOCK',
-    title: '禁止绕过 OpenClaw Agent',
+    title: '必须交给平台采集 Agent',
     appliesTo: ['all'],
-    message: '业务采集、补数、写库和采集 skill 修改必须交给对应平台 OpenClaw Agent；Claude Code/Codex 不得代替执行。',
+    message: '业务采集、补数、缺口修复必须交给对应平台的采集 Agent 执行；助理不得自行采集或写库。',
   },
   {
     id: 'STRICT-NO-READONLY-COLLECT',
@@ -51,11 +50,11 @@ const BLOCK_RULES: StrictRule[] = [
     message: '不允许机器 B 或只读 Agent 直连平台采集、写库或修改采集逻辑。',
   },
   {
-    id: 'STRICT-NO-ADHOC-SCRIPT',
+    id: 'STRICT-STOP-AND-ESCALATE',
     level: 'BLOCK',
-    title: '禁止临时脚本长期绕过正式 skill',
+    title: '能力缺失必须停止并升级',
     appliesTo: ['all'],
-    message: '不允许临时脚本、手敲业务 SQL、机器自带 Codex 长期绕过正式 skill；缺能力时升级现有 skill。',
+    message: '若现有采集能力不支持本次任务，立即停止执行，记录缺失能力、影响范围和相关证据，升级给技术负责人。助理不得要求 Agent 临时改代码、建脚本或变更正式采集能力。',
   },
   {
     id: 'STRICT-NO-HARDCODE-CRED',
@@ -65,18 +64,11 @@ const BLOCK_RULES: StrictRule[] = [
     message: '不允许把账号、密码、Cookie、Token、Authorization、数据库连接串写入前端、Prompt、日志或 repo。',
   },
   {
-    id: 'STRICT-NO-WORKSPACE-CHANGE',
-    level: 'BLOCK',
-    title: '禁止改动 workspace 配置路径',
-    appliesTo: ['all'],
-    message: '不允许修改、覆盖或临时切换 Agent workspace 配置路径。',
-  },
-  {
     id: 'STRICT-NO-BLIND-INSERT',
     level: 'BLOCK',
-    title: '禁止盲目写库/毁数据',
-    appliesTo: ['write', 'backfill', 'migration'],
-    message: '不允许盲目 INSERT、无唯一键写入、删除既有业务数据或未备份批量改写。',
+    title: '禁止重复写入/毁数据',
+    appliesTo: ['write', 'backfill'],
+    message: '不允许重复写入、删除既有业务数据或未备份的批量改写；确保不重复、不破坏已有数据。',
   },
   {
     id: 'STRICT-FAIL-CLOSED',
@@ -113,9 +105,9 @@ const CONFIRM_RULES: StrictRule[] = [
   {
     id: 'CONFIRM-AGENT-SKILL-ENTRY',
     level: 'CONFIRM',
-    title: '确认 Agent / skill / live 入口',
+    title: '确认对应平台采集 Agent',
     appliesTo: ['all'],
-    message: '已确认对应平台 Agent、正式 skill 和 live 入口。',
+    message: '已确认本次任务归属哪个平台的采集 Agent，并从正式入口下发。',
   },
   {
     id: 'CONFIRM-SCOPE',
@@ -135,7 +127,7 @@ const CONFIRM_RULES: StrictRule[] = [
     id: 'CONFIRM-BACKUP',
     level: 'CONFIRM',
     title: '写库前备份与回滚点',
-    appliesTo: ['write', 'backfill', 'migration'],
+    appliesTo: ['write', 'backfill'],
     message: '写库前已有备份和回滚点。',
   },
   {
@@ -164,14 +156,7 @@ const CONFIRM_RULES: StrictRule[] = [
     level: 'CONFIRM',
     title: '执行后核验',
     appliesTo: ['all'],
-    message: '执行后会核验行数、断档、重复、空字段、异常值和 collect/sync 状态。',
-  },
-  {
-    id: 'CONFIRM-GIT-TRAIL',
-    level: 'CONFIRM',
-    title: 'Git 留痕',
-    appliesTo: ['all'],
-    message: '有代码改动时会提交当前正式 repo，并记录 commit/push/回滚点。',
+    message: '执行后会核验行数、断档、重复、空字段、异常值和任务状态。',
   },
 ]
 
@@ -185,32 +170,11 @@ const WARN_RULES: StrictRule[] = [
     message: '信息不足时先输出所需证据，不得猜根因后直接全量执行。',
   },
   {
-    id: 'WARN-DEVOPS-LABEL',
+    id: 'WARN-CLEAR-RANGE',
     level: 'WARN',
-    title: 'DevOps 命令需标注',
+    title: '日期/店铺/范围要明确',
     appliesTo: ['all'],
-    message: 'DevOps 命令必须明确标为「人工执行 / 非业务采集替代」。',
-  },
-  {
-    id: 'WARN-INTERMEDIATE-CLEANUP',
-    level: 'WARN',
-    title: '中间产物仅限 workspace',
-    appliesTo: ['all'],
-    message: '中间 JSON/CSV/截图仅允许在对应 workspace，审计通过后清理。',
-  },
-  {
-    id: 'WARN-NO-JSON-IN-PLAIN-FIELD',
-    level: 'WARN',
-    title: '普通字段不塞 JSON',
-    appliesTo: ['write'],
-    message: '普通数据库字段不得随意塞入 JSON/数组/对象。',
-  },
-  {
-    id: 'WARN-PARAMETERIZE-RANGE',
-    level: 'WARN',
-    title: '日期/店铺/范围参数化',
-    appliesTo: ['all'],
-    message: '任务日期、店铺和商品范围必须参数化，禁止写死单次范围。',
+    message: '任务的日期、店铺和数据范围必须写清楚，不含糊、不一次给过大范围。',
   },
 ]
 

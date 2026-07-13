@@ -216,16 +216,15 @@ export default function GeneratorTab({ shops }: { shops: ShopEntry[] }) {
         </div>
 
         <div className="panel">
-          <h2>③ 风险与留痕</h2>
+          <h2>③ 风险与联系</h2>
           <div className="grid2">
             <TriField label="登录态是否已知有效" value={input.loginState} onChange={(v) => set('loginState', v)} />
             <TriField label="是否处于风控/冷却" value={input.underRiskControl} onChange={(v) => set('underRiskControl', v)} />
             <TriField label="写库前是否已备份" value={input.hasBackup} onChange={(v) => set('hasBackup', v)} />
-            <TriField label="是否有同范围 Cron/补数" value={input.hasConflictCron} onChange={(v) => set('hasConflictCron', v)} />
+            <TriField label="是否有同范围任务/补数" value={input.hasConflictCron} onChange={(v) => set('hasConflictCron', v)} />
             <TriField label="多店是否独立 profile/端口" value={input.multishopIsolation} onChange={(v) => set('multishopIsolation', v)} />
           </div>
           <div className="grid2">
-            <div className="field"><label>Git 状态</label><input value={input.gitStatus} onChange={(e) => set('gitStatus', e.target.value)} /></div>
             <div className="field"><label>任务编号</label><input value={input.taskId} onChange={(e) => set('taskId', e.target.value)} /></div>
             <div className="field"><label>负责人</label><input value={input.owner} onChange={(e) => set('owner', e.target.value)} /></div>
             <div className="field"><label>需升级给</label><input value={input.escalateTo} onChange={(e) => set('escalateTo', e.target.value)} /></div>

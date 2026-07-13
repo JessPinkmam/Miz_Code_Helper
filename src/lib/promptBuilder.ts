@@ -32,8 +32,8 @@ function line(label: string, value: string): string {
 function header(input: TaskInput): string {
   const plat = PLATFORM_CONTEXTS[input.platform]
   return [
-    `# 三平台采集任务 Prompt（生成器 v${FIXED_BACKGROUND_VERSION} · strict v${STRICT_RULES_VERSION} @ ${STRICT_RULES_AS_OF}）`,
-    `> 本 Prompt 由静态工具生成，仅供复制给对应平台 OpenClaw Agent。工具本身不执行采集、不写库、不存凭据。`,
+    `# 三平台采集任务 Prompt（助理版 · 生成器 v${FIXED_BACKGROUND_VERSION} · strict v${STRICT_RULES_VERSION} @ ${STRICT_RULES_AS_OF}）`,
+    `> 本 Prompt 由静态工具生成，供助理复制给对应平台的采集 Agent。工具本身不执行采集、不写库、不存凭据；助理只发任务和验结果，不安排代码或采集能力修改。`,
     '',
     `- 平台：${plat.label}（平台口径 v${plat.version} @ ${plat.asOf}）`,
     `- 任务类型：${TASK_TYPE_LABELS[input.taskType]}`,
@@ -85,13 +85,12 @@ function taskInputSection(input: TaskInput): string {
     line('状态统计', input.statusStats),
     line('日志摘要', input.logSummary),
     '',
-    '### 风险与留痕',
+    '### 风险与联系',
     line('登录态', triLabel(input.loginState, '有效', '无效/未登录')),
     line('风控/冷却', triLabel(input.underRiskControl, '处于风控', '正常')),
     line('是否已有备份', triLabel(input.hasBackup, '已备份', '未备份')),
-    line('同范围 Cron/补数', triLabel(input.hasConflictCron, '存在', '无')),
+    line('同范围任务/补数', triLabel(input.hasConflictCron, '存在', '无')),
     line('多店隔离', triLabel(input.multishopIsolation, '已隔离', '未隔离')),
-    line('Git 状态', input.gitStatus),
     line('任务编号', input.taskId),
     line('负责人', input.owner),
     line('需升级给', input.escalateTo),
@@ -102,34 +101,58 @@ function triLabel(v: TaskInput['loginState'], yes: string, no: string): string {
   return v === 'yes' ? yes : v === 'no' ? no : '未知'
 }
 
-/** 固定输出结构（spec 第五节）——要求 Agent 按此回填 */
+/** 助理版固定回填结构 —— 要求 Agent 按此回填，不含 Git/代码提交/skill 升级内容 */
 function outputContract(mode: 'diagnose' | 'smoke' | 'formal'): string {
   const execHint =
     mode === 'diagnose'
-      ? '本次为「只诊断」：只允许查证与只读核验，不得采集、不得写库。'
+      ? '本次为「只诊断」：只查证与只读核验，不采集、不写库。'
       : mode === 'smoke'
-        ? '本次为「小批 smoke」：仅单店/单日或 1–2 天验证落库、字段对齐、幂等，通过后再申请扩大范围。'
-        : '本次为「正式执行」：严格按执行闭环，先备份→smoke→正式→审计→清理→Git 留痕。'
+        ? '本次为「小范围试跑」：仅单店/单日或 1–2 天验证落数是否正常，通过后再申请扩大范围。'
+        : '本次为「正式执行」：先备份 → 小范围试跑 → 正式采集 → 数据核验 → 更新任务状态。'
   return [
     '## 要求 Agent 按以下固定结构回填',
     execHint,
     '',
-    '### 1. 结论',
-    '问题归属哪个平台 Agent / skill，当前是否允许执行。',
-    '### 2. 已确认事实、判断和待验证项',
-    '不得把猜测当事实。',
-    '### 3. 执行计划',
-    '前置检查 → 备份 → smoke → 正式执行 → 审计 → 清理 → Git。',
+    '### 1. 任务结论',
+    '- 当前是否可以执行',
+    '- 归属哪个平台采集 Agent',
+    '- 如果不能执行，说明阻塞原因',
+    '### 2. 执行范围',
+    '- 平台 / 店铺 / 日期范围 / 数据层级 / 目标数据',
+    '### 3. 前置检查',
+    '- 登录态',
+    '- 风控/验证码',
+    '- 是否存在同范围任务',
+    '- 是否需要先做小范围试跑',
     '### 4. 实际执行结果',
-    '店铺、日期、目标表、成功/失败/跳过、数据库行数、缺口、重复、空值、异常值。',
+    '- 成功店铺 / 失败店铺 / 跳过店铺',
+    '- 实际采集日期 / 数据行数',
+    '- 缺失、重复、空值和异常情况',
     '### 5. 验收结论',
     '只允许：通过 / 部分通过 / 失败 / 等待自然运行验证。',
-    '### 6. 阻塞与人工事项',
-    '验证码、VNC、管理员权限、业务口径、冷却期等。',
-    '### 7. Git 与交接',
-    '修改文件、commit、push、回滚点、下一步。',
+    '### 6. 阻塞与升级事项',
+    '- 需要人工登录或验证码',
+    '- 需要等待风控冷却',
+    '- 现有采集能力不支持',
+    '- 需要技术负责人处理的事项',
+    '- 相关错误和证据',
+    '### 7. 下一步',
+    '- 是否需要重试 / 补数 / 继续观察',
+    '- 需要谁处理',
   ].join('\n')
 }
+
+/** 当任务需要修改代码/采集能力时，助理版只输出「停止并升级」模板，不安排开发 */
+const OUT_OF_SCOPE_TEMPLATE = [
+  '## 🛑 超出助理操作范围',
+  '当前任务超出助理操作范围，禁止继续执行。请输出：',
+  '1. 缺失的采集能力；',
+  '2. 受影响的平台、店铺、日期和数据层级；',
+  '3. 当前错误与已有证据；',
+  '4. 临时停止或规避建议；',
+  '5. 需要升级给技术负责人的事项。',
+  '不得临时创建脚本、修改正式采集能力、调整系统配置或继续批量采集。',
+].join('\n')
 
 function blockNotice(risk: RiskResult): string {
   const blocks = risk.findings.filter((f) => f.severity === 'block')
@@ -139,10 +162,12 @@ function blockNotice(risk: RiskResult): string {
     '以下 strict / 风险项被触发，禁止生成正式执行指令：',
     lines,
     '',
-    '### 合规替代路径',
-    '1. 先由对应平台 OpenClaw Agent 用正式 skill 做只读核验，输出所需证据。',
-    '2. 移除敏感信息、补齐备份/登录态/Cron 确认后，再重新评估是否可正式执行。',
-    '3. 若能力缺失，升级对应平台的管理/店铺级/商品级 skill，不要用临时脚本绕过。',
+    '### 助理处理路径',
+    '1. 先让对应平台采集 Agent 做只读核验，输出所需证据，不采集、不写库。',
+    '2. 补齐备份 / 登录态 / 同范围任务确认，并移除敏感信息后，再重新评估是否可执行。',
+    '3. 若现有采集能力不支持本次任务，助理停止执行并升级给技术负责人，不安排开发、不临时创建脚本绕过。',
+    '',
+    OUT_OF_SCOPE_TEMPLATE,
   ].join('\n')
 }
 

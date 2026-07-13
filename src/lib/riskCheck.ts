@@ -42,7 +42,6 @@ export function deriveScopes(input: TaskInput): RuleScope[] {
     scopes.add('write')
     scopes.add('backfill')
   }
-  if (input.taskType === 'skill_upgrade') scopes.add('migration')
   if (input.shops.length > 1) scopes.add('multishop')
   return [...scopes]
 }

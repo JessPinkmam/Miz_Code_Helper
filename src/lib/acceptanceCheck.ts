@@ -41,10 +41,6 @@ function hasAudit(t: string): boolean {
   return /(审计|核验|勾稽|无断档|无重复|空值|异常值)/.test(t)
 }
 
-function hasGit(t: string): boolean {
-  return /(commit|push|回滚|git|无代码改动|未改动代码)/i.test(t)
-}
-
 const FALSE_STABLE = /(delivered\s*=\s*true|进程在线|日志成功|人工补齐)/i
 const CLAIM_DONE = /(全部完成|已完成|采集成功|执行成功|正常|已处理)/
 const HAS_PENDING_FAILED = /(pending|failed|失败|待处理|未完成|跳过)/i
@@ -71,7 +67,6 @@ export function checkAcceptance(text: string): AcceptanceResult {
   const dbEvidence = hasDbEvidence(t)
   const scope = hasScope(t)
   const audit = hasAudit(t)
-  const git = hasGit(t)
 
   // ── 自动判为不通过（fatal）──
   if (has(t, CLAIM_DONE) && !dbEvidence) {
@@ -135,11 +130,11 @@ export function checkAcceptance(text: string): AcceptanceResult {
     })
   }
   const codeChanged = /(修改|新增|改写).*(脚本|skill|代码|script)/.test(t)
-  if (codeChanged && !git) {
+  if (codeChanged) {
     issues.push({
-      code: 'NO_GIT',
-      message: '提到代码改动但缺少 Git commit/push 状态。',
-      fatal: false,
+      code: 'OUT_OF_SCOPE',
+      message: '返回内容涉及脚本/skill/代码改动，超出助理范围，应停止并升级技术负责人。',
+      fatal: true,
     })
   }
   if (/审计.*(失败|不通过|未通过)/.test(t) && /删除.*(证据|全部|日志)/.test(t)) {
@@ -154,7 +149,6 @@ export function checkAcceptance(text: string): AcceptanceResult {
   if (dbEvidence) positives.push('含数据库落数证据（行数/记录数）')
   if (scope) positives.push('含店铺+日期+目标表范围')
   if (audit) positives.push('含审计/核验说明')
-  if (git) positives.push('含 Git 留痕说明')
 
   // ── 判定 ──
   const waitNatural = /(等待自然运行|待自然运行|尚未验收稳定|观察.*cron)/i.test(t)
