@@ -4,6 +4,7 @@ import AcceptanceTab from './components/AcceptanceTab'
 import BackgroundTab from './components/BackgroundTab'
 import ShopsTab from './components/ShopsTab'
 import { EXAMPLE_SHOPS, type ShopEntry } from './config/shops.example'
+import { loadVault, type CredMap } from './lib/shopVault'
 import { STRICT_RULES_VERSION, STRICT_RULES_AS_OF } from './config/strictRules'
 import { PLATFORM_LIST } from './config/platformContext'
 
@@ -19,6 +20,7 @@ const TABS: { id: Tab; label: string }[] = [
 export default function App() {
   const [tab, setTab] = useState<Tab>('gen')
   const [shops, setShops] = useState<ShopEntry[]>(EXAMPLE_SHOPS)
+  const [creds, setCreds] = useState<CredMap>(() => loadVault())
 
   const platVersions = PLATFORM_LIST.map((p) => `${p.label} v${p.version}`).join(' / ')
 
@@ -42,10 +44,10 @@ export default function App() {
         ))}
       </div>
 
-      {tab === 'gen' && <GeneratorTab shops={shops} />}
+      {tab === 'gen' && <GeneratorTab shops={shops} creds={creds} />}
       {tab === 'accept' && <AcceptanceTab />}
       {tab === 'bg' && <BackgroundTab />}
-      {tab === 'shops' && <ShopsTab shops={shops} setShops={setShops} />}
+      {tab === 'shops' && <ShopsTab shops={shops} setShops={setShops} creds={creds} setCreds={setCreds} />}
     </div>
   )
 }

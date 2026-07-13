@@ -14,9 +14,12 @@ const DETECTORS = [
   ['postgres_uri', /\bpostgres(ql)?:\/\/\S+/i],
   ['db_uri', /\b(mysql|mongodb(\+srv)?|redis|amqp):\/\/[^\s/]*:[^\s/]+@/i],
   ['pgpassword', /\bPGPASSWORD\s*[:=]\s*\S+/i],
-  ['password', /\b(pass(word|wd)?|pwd)\s*[:=]\s*['"]?\S{3,}/i],
+  // 仅当密码被赋成「带引号的字面量」时判为硬编码密钥；
+  // password: string / password: e.target.value 等标识符或类型引用不算。
+  ['password', /\b(pass(word|wd)?|pwd)\s*[:=]\s*['"][^'"\n]{3,}['"]/i],
   ['authorization', /\bBearer\s+[A-Za-z0-9._-]{10,}/],
-  ['token', /\b(access[_-]?token|api[_-]?key|secret)\s*[:=]\s*['"]?\S{6,}/i],
+  // 同理，token/secret 只在被赋成带引号字面量时判为硬编码。
+  ['token', /\b(access[_-]?token|api[_-]?key|secret)\s*[:=]\s*['"][^'"\n]{6,}['"]/i],
   ['jwt', /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
   ['private_key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
 ]

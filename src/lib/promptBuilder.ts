@@ -68,7 +68,11 @@ function platformSection(input: TaskInput): string {
   return [`## 平台现行 Background（${plat.label} · 仅现行口径，历史不入）`, notes].join('\n')
 }
 
-function taskInputSection(input: TaskInput): string {
+function taskInputSection(input: TaskInput, credShops: string[]): string {
+  const selectedWithCred = input.shops.filter((name) => credShops.includes(name))
+  const credLine = selectedWithCred.length
+    ? `本地已留存凭据的店铺：${selectedWithCred.join('、')}（账号/密码仅存于助理本机，本 Prompt 不含明文；由采集 Agent 用其登录态执行，需要时人工登录）`
+    : '凭据：本 Prompt 不含任何账号/密码；由采集 Agent 用其登录态执行。'
   return [
     '## 本次任务输入',
     line('店铺', input.shops.join('、')),
@@ -91,6 +95,7 @@ function taskInputSection(input: TaskInput): string {
     line('是否已有备份', triLabel(input.hasBackup, '已备份', '未备份')),
     line('同范围任务/补数', triLabel(input.hasConflictCron, '存在', '无')),
     line('多店隔离', triLabel(input.multishopIsolation, '已隔离', '未隔离')),
+    credLine,
     line('任务编号', input.taskId),
     line('负责人', input.owner),
     line('需升级给', input.escalateTo),
@@ -181,8 +186,11 @@ function pendingConfirmNotice(risk: RiskResult): string {
 /**
  * 组装最终 Prompt。若命中 BLOCK，则强制降级为 diagnose，
  * 若为 formal 但仍有未确认 CONFIRM，则降级为 smoke。
+ *
+ * @param credShops 本地已留存凭据的店铺名列表；只用于在 Prompt 里标注「凭据本地已留存」，
+ *                   绝不携带账号/密码明文。
  */
-export function buildPrompt(input: TaskInput): BuildOutput {
+export function buildPrompt(input: TaskInput, credShops: string[] = []): BuildOutput {
   const risk = runRiskCheck(input)
 
   let effectiveMode = input.execMode
@@ -205,7 +213,7 @@ export function buildPrompt(input: TaskInput): BuildOutput {
     '',
     platformSection(input),
     '',
-    taskInputSection(input),
+    taskInputSection(input, credShops),
     '',
     outputContract(effectiveMode),
   ]

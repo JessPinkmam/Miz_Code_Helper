@@ -16,6 +16,7 @@ import {
   type Tri,
 } from '../types'
 import { buildPrompt } from '../lib/promptBuilder'
+import { hasCred, type CredMap } from '../lib/shopVault'
 import { clearDraft, loadDraft, saveDraft } from './useDraft'
 
 const TRI_OPTS: { v: Tri; label: string }[] = [
@@ -39,7 +40,7 @@ function TriField({ label, value, onChange }: { label: string; value: Tri; onCha
   )
 }
 
-export default function GeneratorTab({ shops }: { shops: ShopEntry[] }) {
+export default function GeneratorTab({ shops, creds }: { shops: ShopEntry[]; creds: CredMap }) {
   const [input, setInput] = useState<TaskInput>(() => loadDraft<TaskInput>() ?? EMPTY_TASK_INPUT)
   const [msg, setMsg] = useState<string>('')
 
@@ -50,7 +51,13 @@ export default function GeneratorTab({ shops }: { shops: ShopEntry[] }) {
     [shops, input.platform],
   )
 
-  const out = useMemo(() => buildPrompt(input), [input])
+  // 选中店铺里，本地留存了凭据的店名（只传「有无」，绝不传账号密码明文）
+  const credShops = useMemo(() => {
+    const activeShops = shops.length ? shops : EXAMPLE_SHOPS
+    return activeShops.filter((s) => hasCred(creds, s.key)).map((s) => s.name)
+  }, [shops, creds])
+
+  const out = useMemo(() => buildPrompt(input, credShops), [input, credShops])
   const { risk } = out
 
   const confirmRules = risk.applicableRules.filter((r) => r.level === 'CONFIRM')

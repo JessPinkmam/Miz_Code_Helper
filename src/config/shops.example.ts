@@ -37,7 +37,7 @@ export const EXAMPLE_SHOPS: ShopEntry[] = [
     brand: '品牌X',
     enabled: true,
     allowShopLevel: true,
-    allowProductLevel: false, // 对应 shop7 未通过 API/flow 覆盖验收
+    allowProductLevel: false, // 该店暂未开通商品级采集
   },
   {
     key: 'dw-demo-1',
