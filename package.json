@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "scan": "node scripts/scan-secrets.mjs"
+    "scan": "node scripts/scan-secrets.mjs",
+    "encrypt:feishu": "node scripts/encrypt-feishu-config.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

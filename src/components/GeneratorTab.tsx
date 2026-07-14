@@ -18,6 +18,7 @@ import {
 import { buildPrompt } from '../lib/promptBuilder'
 import { hasCred, type CredMap } from '../lib/shopVault'
 import { clearDraft, loadDraft, saveDraft } from './useDraft'
+import FeishuSubmitPanel from './FeishuSubmitPanel'
 
 const TRI_OPTS: { v: Tri; label: string }[] = [
   { v: 'unknown', label: '未知' },
@@ -285,6 +286,8 @@ export default function GeneratorTab({ shops, creds }: { shops: ShopEntry[]; cre
           {msg && <div className="hint">{msg}</div>}
           <div className="preview" style={{ marginTop: 12 }}>{out.prompt}</div>
         </div>
+
+        <FeishuSubmitPanel input={input} out={out} />
       </div>
     </div>
   )

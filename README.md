@@ -16,10 +16,11 @@
 ```bash
 npm install      # 安装依赖
 npm run dev      # 本地开发（http://localhost:5173）
-npm test         # 运行单元测试（25 个）
+npm test         # 运行单元测试（29 个）
 npm run build    # 类型检查 + 生产构建到 dist/
 npm run preview  # 预览生产构建
 npm run scan     # 提交前敏感信息扫描（命中即非零退出）
+npm run encrypt:feishu  # 本地把飞书 Webhook/Token 加密注入（可选，见「提交到飞书」）
 ```
 
 要求 Node ≥ 18（CI 用 22）。
@@ -58,6 +59,26 @@ vip,示例唯品会店A,,
 
 ---
 
+## 提交到飞书任务表（可选）
+
+在「A · Prompt 生成器」右栏，生成 Prompt 后可一键把 **Prompt + 任务元数据** 提交到飞书多维表格 Webhook，免去手动复制。飞书的 Webhook URL 和 Bearer Token **不以明文进入源码**：
+
+```
+本地加密脚本（npm run encrypt:feishu）
+  ↓ 输入 Webhook URL、Token、口令（PBKDF2-SHA256 600k + AES-256-GCM）
+生成 src/config/encryptedFeishuConfig.ts（只含 salt/iv/ciphertext，可提交）
+  ↓ 部署到 GitHub Pages
+使用者在页面输入口令 → 浏览器内存里解密 → 直接 POST 飞书
+```
+
+- **注入配置**：本机运行 `npm run encrypt:feishu`，按提示输入 Webhook URL、Bearer Token（可留空）、口令（≥12 位，建议 16+ 位随机口令）。生成的 `encryptedFeishuConfig.ts` 只含密文与 KDF 参数，**不含任何明文**，可安全提交。未注入前页面显示占位提示，无法解锁。
+- **口令只在内存**：解密结果只放组件 `useRef`，**不写 localStorage/sessionStorage**，刷新页面即重新锁定。口令必须由使用者当场输入，源码里绝不出现口令。
+- **提交前二次校验**：命中敏感信息或存在 BLOCK 拦截项时禁止提交；payload 只含任务元数据与已通过扫描的 Prompt，**绝不含账号/密码/凭据**。
+- **不回显敏感信息**：错误只显示 HTTP 状态码或统一提示，不打印 config / webhook / token，也不回显飞书完整响应。
+- ⚠️ **CORS**：能否从 GitHub Pages 直接调用取决于飞书 Webhook 是否允许对应 `Origin` 与带 `Authorization` 的预检（`OPTIONS`）。若被拦截会看到 `Blocked by CORS policy`，这不是加密或代码问题，需在飞书侧放通跨域。
+
+---
+
 ## 架构
 
 ```
@@ -66,15 +87,18 @@ src/
 │  ├─ strictRules.ts       # 唯一 strict 规则源（带版本号，BLOCK/CONFIRM/WARN + 唯一 ID + 适用范围 + 提示）
 │  ├─ platformContext.ts   # 三平台现行 Background（带 version/asOf，历史口径不入）
 │  ├─ fixedBackground.ts   # 所有平台共用固定 Background
-│  └─ shops.example.ts     # 可编辑示例店铺清单（假名，无凭据）
+│  ├─ shops.example.ts     # 可编辑示例店铺清单（假名，无凭据）
+│  └─ encryptedFeishuConfig.ts  # 飞书 Webhook/Token 密文（占位可提交；npm run encrypt:feishu 注入真实密文）
 ├─ lib/
 │  ├─ sensitiveScan.ts     # 敏感信息检测（只回类别，绝不回传原文）
 │  ├─ shopVault.ts         # 店铺凭据本地保险箱 + CSV 解析（只存 localStorage，不进导出/Prompt）
 │  ├─ promptBuilder.ts     # 优先级组装：strict > platform_current > task_input > historical
 │  ├─ riskCheck.ts         # 自动风险校验 + 正式执行可否判定
-│  └─ acceptanceCheck.ts   # 结果验收规则
-├─ components/             # A/B/C + 店铺清单 UI
-├─ __tests__/              # Vitest：生成/风险/验收/敏感信息/凭据保险箱
+│  ├─ acceptanceCheck.ts   # 结果验收规则
+│  ├─ feishuSecretVault.ts # 浏览器端解密飞书配置（口令仅内存，绝不落盘）
+│  └─ feishuSubmit.ts      # 构建提交 payload（不含凭据）+ POST 飞书
+├─ components/             # A/B/C + 店铺清单 + 飞书提交 UI
+├─ __tests__/              # Vitest：生成/风险/验收/敏感信息/凭据保险箱/飞书提交
 └─ types.ts                # 领域类型
 ```
 
@@ -145,3 +169,4 @@ strict_rules > platform_context.current > task_input > historical_notes
 - **v0.1 · 2026-07-11**：Prompt 生成器 + 结果验收器 + Background/规则展示 + 敏感信息检测 + 优先级引擎。
 - **v2.0 · 2026-07-13**：改为**助理版**——移除全部开发/Git/Skill 升级内容，缺采集能力时停止并升级技术负责人；Prompt 采用助理版 7 段回填结构（任务结论 / 执行范围 / 前置检查 / 实际执行结果 / 验收结论 / 阻塞与升级事项 / 下一步）+「超出助理范围」停止模板。
 - **v2.1 · 2026-07-13**：店铺清单支持 **CSV 批量导入 + 本地凭据保险箱**（账号/密码只存本机，不进 Git/导出/Prompt）。
+- **v2.2 · 2026-07-14**：新增 **一键提交到飞书任务表**——生成 Prompt 后把 Prompt + 任务元数据 POST 到飞书多维表格 Webhook。Webhook/Token 用 PBKDF2-SHA256 + AES-256-GCM 加密，源码只存密文；口令仅在浏览器内存解密（不落盘），提交前二次敏感扫描，payload 不含任何凭据。
